@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "project": "[Project Name]",
+    "last_updated": "YYYY-MM-DD",
+    "schema_version": "1.0",
+    "status_values": ["not_started", "in_progress", "completed", "blocked", "deprecated"],
+    "instructions": "Use this file to track feature status. Update status and notes fields only. Do not modify the schema or add freeform text — use the notes field instead."
+  },
+  "features": [
+    {
+      "id": "F001",
+      "name": "Example Feature",
+      "description": "One sentence describing what this feature does",
+      "status": "not_started",
+      "priority": "high",
+      "owner": "",
+      "test_command": "pytest tests/test_example.py",
+      "test_status": "failing",
+      "related_files": [
+        "src/features/example.ts",
+        "tests/test_example.py"
+      ],
+      "dependencies": [],
+      "notes": "",
+      "created": "YYYY-MM-DD",
+      "updated": "YYYY-MM-DD"
+    }
+  ]
+}
