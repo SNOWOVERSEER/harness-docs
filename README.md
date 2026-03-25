@@ -15,16 +15,18 @@ Most project docs are written for humans with context. Agents don't have that lu
 
 ### Key principles implemented
 
-| Harness Principle | How |
-|---|---|
-| Instruction file as directory, not encyclopedia | ≤ 200 line limit with mechanical `wc -l` verification |
-| Progressive disclosure | Three-layer info architecture (index → topic docs → deep refs) |
-| Documentation as feedback loop | Detect mode + Update mode close the loop automatically |
-| Structured formats over Markdown | JSON for state tracking, structured audit scoring |
-| Actionable over advisory | Forbidden word scanning, imperative voice enforcement |
-| Error messages = fix guides | Troubleshooting template: Symptom → Cause → Fix → Prevention |
-| Architecture constraints | Dependency direction docs + module boundary tables |
-| Observability | `docs/observability.md` with log/metric/trace query commands for agent self-verification |
+
+| Harness Principle                               | How                                                                                      |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Instruction file as directory, not encyclopedia | ≤ 200 line limit with mechanical `wc -l` verification                                    |
+| Progressive disclosure                          | Three-layer info architecture (index → topic docs → deep refs)                           |
+| Documentation as feedback loop                  | Detect mode + Update mode close the loop automatically                                   |
+| Structured formats over Markdown                | JSON for state tracking, structured audit scoring                                        |
+| Actionable over advisory                        | Forbidden word scanning, imperative voice enforcement                                    |
+| Error messages = fix guides                     | Troubleshooting template: Symptom → Cause → Fix → Prevention                             |
+| Architecture constraints                        | Dependency direction docs + module boundary tables                                       |
+| Observability                                   | `docs/observability.md` with log/metric/trace query commands for agent self-verification |
+
 
 ### Multi-tool support
 
@@ -32,14 +34,17 @@ Auto-detects and works with `CLAUDE.md` (Claude Code), `AGENTS.md` (OpenAI Codex
 
 ## Installation
 
-### As a Claude Code / Cowork skill
+### Quick install (recommended)
 
 ```bash
-# Option 1: Install the .skill file (from Releases)
-# Double-click or drag into Claude Code / Cowork
+npx skills add SNOWOVERSEER/harness-docs
+```
 
-# Option 2: Copy directly into your project
-cp -r harness-docs/ ~/.claude/skills/harness-docs/
+### Other methods
+
+```bash
+# Clone directly
+git clone https://github.com/SNOWOVERSEER/harness-docs.git ~/.claude/skills/harness-docs
 ```
 
 ### As a standalone reference
@@ -66,10 +71,12 @@ harness-docs/
 
 Tested across 10 scenarios (3 iterations), including ambiguous requests, mixed modes, non-code projects, and implicit detection:
 
-| Configuration | Pass Rate |
-|---|---|
-| With skill | **100%** (38/38 assertions) |
-| Baseline (no skill) | 55% (24/44 assertions) |
+
+| Configuration       | Pass Rate                   |
+| ------------------- | --------------------------- |
+| With skill          | **100%** (38/38 assertions) |
+| Baseline (no skill) | 55% (24/44 assertions)      |
+
 
 ## Credits
 
