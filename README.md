@@ -8,7 +8,7 @@ Most project docs are written for humans with context. Agents don't have that lu
 
 ### Four modes
 
-- **Audit** — Scan existing docs, score against 8 Harness dimensions, produce a remediation plan, and apply fixes
+- **Audit** — Read and analyze every documentation file (regardless of directory depth), score against 8 Harness dimensions, then remediate: split oversized files, consolidate redundancy, rewrite content for agent readability, and verify all issues are resolved before completion
 - **Generate** — Create a complete AGENTS.md/CLAUDE.md + `docs/` directory from scratch
 - **Update** — Encode a specific agent failure into documentation to prevent recurrence
 - **Detect** — Implicitly recognize when user complaints or repeated mistakes signal a documentation gap, then proactively suggest updates

@@ -117,15 +117,19 @@ Detect the agent instruction file (see "Agent instruction file naming" above), t
 5. Check for other agent config files (`.cursor/rules`, `.github/copilot-instructions.md`, etc.)
 6. Check for agent memory/config files in `.claude/` directory (e.g., memory files, settings)
 
-**Large project triage**: If more than 15 documentation files are found, prioritize: (1) agent instruction file, (2) files in `docs/`, (3) files referenced from AGENTS.md, (4) remaining files by size (largest first). Analyze the first 15 in detail; summarize remaining files by issue type only.
-
-Record every file found with its line count (`wc -l`). This inventory is the basis for all analysis — do not skip files.
+Record every file found with its line count (`wc -l`). This inventory is the basis for all analysis.
 
 Also read `references/principles.md` from this skill for the scoring rubric.
 
 ### Step 2: Analyze each file individually
 
-For every documentation file found (prioritized per the triage rule above), answer these questions:
+**You MUST read the actual content of every documentation file found in Step 1.** Listing file names and line counts is not analysis — you cannot identify issues in a file you haven't read. For each file, use the Read tool to read its full content before evaluating it.
+
+**Batching for efficiency**: If there are many files, read them in parallel batches (use multiple Read tool calls in one message). For files over 500 lines, read the first 300 lines and last 100 lines to get a representative sample, then read the middle if issues are found.
+
+**No file cap**: Analyze ALL documentation files, regardless of how many there are or how deep in the directory tree they sit. A 600-line file buried in `src/utils/docs/guide.md` needs the same analysis as `CLAUDE.md` at the root. If there are more than 30 files, process them in batches but do NOT skip any.
+
+For every documentation file found, answer these questions:
 
 #### 2a. Content analysis
 
@@ -146,7 +150,7 @@ For every documentation file found (prioritized per the triage rule above), answ
 | Are headers inconsistent or missing? | Standardize to match templates in `assets/` |
 | Are code examples missing for commands/tools? | Add exact invocation syntax |
 | Are error scenarios undocumented? | Add Symptom → Cause → Fix entries |
-| Is the file missing a freshness marker? | Add `<!-- last_verified: DATE -->` |
+| Is the file missing a freshness marker? | Note for Step 6 (freshness markers are added AFTER all substantive remediation) |
 
 Output a per-file findings table:
 
@@ -217,22 +221,74 @@ Evaluate against 8 dimensions (each scored 0-3):
 
 **Scoring adjustments**: For projects with no runtime component (static sites, CLI tools, libraries), mark **Observability** as N/A and compute the total out of 21 instead of 24. Similarly, if a project has no multi-module architecture, **Architecture constraints** may be N/A.
 
-**Minimum action threshold**: If total score < 75% of the applicable maximum, merely adding freshness headers is NOT sufficient remediation. You must address at least the top 3 issues from the file analysis.
+**Minimum action threshold**: Merely adding freshness headers (`last_verified`) is NEVER sufficient remediation — regardless of score. Every issue identified in Step 2 must be addressed with the corresponding action from Step 4. Freshness markers are a Step 6 bookkeeping task, not a remediation action.
 
 ### Step 4: Remediate (with no-regression rule)
 
-For each issue from Step 2, apply the appropriate action:
+**CRITICAL: You MUST act on every issue identified in Step 2.** Adding `last_verified` timestamps is a Step 6 task — it is NOT remediation. If Step 2 found an oversized file, you must split it. If it found redundancy, you must consolidate. Skipping hard actions and only adding timestamps means the audit produced zero value.
+
+#### 4a. Execution order (mandatory)
+
+Process issues in this exact priority order. Do NOT skip to easier actions:
+
+1. **Split** — resolve all oversized/mixed-concern files first (highest impact)
+2. **Consolidate** — eliminate all redundancy between files
+3. **Rewrite** — fix content quality issues (advisory language, vague instructions, missing context)
+4. **Convert to JSON** — migrate mutable state
+5. **Update** — fix stale content
+6. **Connect** — link orphan files
+7. **Delete** — remove obsolete files
+8. **Create** — generate missing docs from templates
+
+#### 4b. Action reference
 
 | Action | When to use | How to execute |
 |---|---|---|
-| **Split** | File > 300 lines OR mixes 3+ unrelated topics | Extract by topic into `docs/`. Add pointer in AGENTS.md with "When to read" guidance. Verify: every fact in the original must exist in exactly one place after split. |
-| **Consolidate** | Same information in 2+ files | Keep the version in the most logical location, delete duplicates, add pointer if needed. |
+| **Split** | File > 300 lines OR mixes 3+ unrelated topics | See "How to Split" below |
+| **Consolidate** | Same information in 2+ files | See "How to Consolidate" below |
 | **Convert to JSON** | Mutable state in Markdown (todo lists, feature trackers, progress, status boards) | Create `.json` with structured schema. Migrate all entries. Delete the `.md` version. |
-| **Rewrite** | Advisory language, vague instructions, missing examples | Replace with imperative, specific, executable text per `references/writing-guide.md`. |
-| **Update** | Stale content (wrong versions, deprecated APIs, outdated commands) | Verify current state by reading code/configs, then fix. |
+| **Rewrite** | Advisory language, vague instructions, missing examples, content that violates any of the 7 writing-guide principles | Read `references/writing-guide.md`. Apply ALL 7 principles to the file: zero-context assumption, imperative voice, one fact per line, exact command format, error-messages-as-fix-guides, JSON for state, freshness markers. This is a content rewrite, not just word substitution. |
+| **Update** | Stale content (wrong versions, deprecated APIs, outdated commands) | Read the actual code/configs to verify current state, then rewrite the documentation to match reality. |
 | **Connect** | Orphan file with no incoming pointer | Add to AGENTS.md documentation map with one-line description and "When to read" context. |
 | **Delete** | Fully obsolete, or duplicate after consolidation | Remove the file. Remove any pointers to it. |
 | **Create** | Gap identified — standard doc type missing entirely | Generate from templates in `assets/`. |
+
+#### How to Split
+
+Splitting is not just "move text to another file." Follow these steps:
+
+1. **Identify topics**: Read the file and list every distinct topic it covers (e.g., architecture, conventions, commands, troubleshooting). Each topic becomes a candidate output file.
+2. **Map sections to topics**: For each section/paragraph, assign it to exactly one topic. If a section spans multiple topics, split the section itself.
+3. **Create output files**: For each topic, create `docs/{topic}.md`. Write the content — do not just copy-paste. Reorganize and improve as you move content:
+   - Add missing context (zero-context assumption)
+   - Convert advisory language to imperatives
+   - Add exact command syntax where missing
+   - Remove duplication within the extracted content
+4. **Update AGENTS.md**: Add a pointer for each new file with "When to read" guidance.
+5. **Verify completeness**: Every fact from the original file must exist in exactly one output file.
+
+#### How to Consolidate
+
+When the same information appears in 2+ files:
+
+1. **Compare the versions**: Read both files. Identify which version is more complete, more accurate, and better written.
+2. **Merge into one**: Keep the better version. Integrate any unique information from the other version(s) into it. Do not just pick one and delete the other — you may lose unique content.
+3. **Rewrite the merged result**: Apply writing-guide principles to the merged content. The merge is an opportunity to improve quality.
+4. **Update all pointers**: Every reference to the deleted file(s) must point to the surviving file.
+5. **Delete the redundant file(s)**: Follow the Cleanup rule below.
+
+#### 4c. Completion gate
+
+Before proceeding to Step 5, verify:
+
+```
+For each issue in Step 2's file_analysis:
+  ✓ An action was taken (specify which action and what changed)
+  ✗ NOT acceptable: "added last_verified" for an oversized/redundant file
+  ✗ NOT acceptable: skipping an issue without explanation
+```
+
+If any issue from Step 2 was not addressed, go back and address it now. Do NOT proceed to Step 5 with unresolved issues.
 
 **Cleanup rule**: When a remediation action replaces a file (Split, Convert to JSON, Consolidate), follow this exact sequence:
 
@@ -273,7 +329,9 @@ If a split would make information harder to find (e.g., splitting a short, well-
 
 After remediation, check what's still missing against the standard structure (see `assets/docs-structure-template.md`). Only generate files that would actually help the agent — skip templates that don't apply to the project (e.g., don't create `docs/observability.md` for a static site with no logs).
 
-### Step 6: Final verification
+### Step 6: Final verification and freshness markers
+
+**This is where `last_verified` timestamps get added** — after all substantive remediation is complete. Adding timestamps is a bookkeeping step, not a remediation action.
 
 Run all mechanical checks:
 1. `wc -l` on AGENTS.md — must be ≤ 200
@@ -281,9 +339,11 @@ Run all mechanical checks:
 3. Advisory language scan — zero forbidden words in AGENTS.md and all `docs/` files
 4. No orphan docs — every file in `docs/` is reachable from AGENTS.md
 5. No Markdown state files — any `todo.md`, `progress.md`, `tracker.md` should have been converted to JSON
-6. Freshness markers — every doc file has a `last_verified` comment
+6. Freshness markers — NOW add `<!-- last_verified: DATE -->` to every doc file that was created or modified
 
-Present a before/after summary showing the score change and what was actually done to each file.
+Present a before/after summary showing:
+- **Per-file diff**: For each file from Step 2's analysis, what issue was found and what action was taken. "Added last_verified" alone is NOT a valid action for oversized, redundant, or poorly-written files.
+- **Score change**: Re-score against the 8 dimensions and show the delta.
 
 ### Step 7: Recommend doc-gardening (optional)
 
