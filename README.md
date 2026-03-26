@@ -18,7 +18,7 @@ Most project docs are written for humans with context. Agents don't have that lu
 
 | Harness Principle                               | How                                                                                      |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Instruction file as directory, not encyclopedia | ≤ 200 line limit with mechanical `wc -l` verification                                    |
+| Instruction file as directory, not encyclopedia | ~100 line target with mechanical `wc -l` verification (200 ceiling)                       |
 | Progressive disclosure                          | Three-layer info architecture (index → topic docs → deep refs)                           |
 | Documentation as feedback loop                  | Detect mode + Update mode close the loop automatically                                   |
 | Structured formats over Markdown                | JSON for state tracking, structured audit scoring                                        |
@@ -55,11 +55,12 @@ The files in `references/` and `assets/` are useful on their own as templates an
 
 ```
 harness-docs/
-├── SKILL.md                              # Main skill instructions (~250 lines)
+├── SKILL.md                              # Main skill instructions
 ├── references/
 │   ├── principles.md                     # 8 Harness principles with scoring rubrics
 │   ├── writing-guide.md                  # How to write for agents (not humans)
-│   └── progressive-disclosure.md         # Three-layer info architecture guide
+│   ├── progressive-disclosure.md         # Three-layer info architecture guide
+│   └── harness-concepts.md              # Extended concepts: plans, tools, doc-gardening, brownfield
 └── assets/
     ├── agents-md-template.md             # AGENTS.md / CLAUDE.md template
     ├── docs-structure-template.md        # Standard docs/ directory structure

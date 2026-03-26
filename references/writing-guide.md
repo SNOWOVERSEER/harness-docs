@@ -1,123 +1,123 @@
-# Agent 文档写作指南
+# Agent Documentation Writing Guide
 
-本指南教你如何把「给人看的文档」改写成「agent 能高效消费的文档」。在写任何文档内容之前请先读完本文件。
-
----
-
-## 核心心智模型
-
-Agent 是一个没有任何背景知识的新员工，但它能精确执行明确的指令。它不会「理解」暗示，但会忠实遵循规则。基于这个心智模型，写作时遵循以下原则。
+This guide teaches you how to rewrite "human-readable documentation" into "documentation agents can efficiently consume." Read this file in full before writing any documentation content.
 
 ---
 
-## 原则 1：零上下文假设
+## Core mental model
 
-假设读者对项目一无所知。不要写 "像我们通常做的那样"、"按照惯例" 这类话。
-
-**改前**: 按照项目惯例处理错误
-**改后**: 所有错误处理使用 `src/lib/errors.ts` 中导出的 `AppError` 类。不要用原生 `throw new Error()`。示例：`throw new AppError('NOT_FOUND', 'User not found')`
+An agent is a new employee with zero background knowledge, but one who can precisely execute clear instructions. It will not "understand" hints, but will faithfully follow rules. Based on this mental model, follow these principles when writing.
 
 ---
 
-## 原则 2：祈使句，不用建议
+## Principle 1: Zero-context assumption
 
-每句话都应该是一个可执行的命令。禁止使用 "建议"、"考虑"、"尽量"、"可以" 等模糊词汇。
+Assume the reader knows nothing about the project. Never write phrases like "as we usually do" or "following convention."
 
-**禁止的词汇表**:
-- 建议 / suggest / recommend
-- 考虑 / consider
-- 尽量 / try to
-- 通常 / usually / generally
-- 可以 / you can / you may
-- 应该 / should（用 "必须/MUST" 或直接用祈使句替代）
-
-**改前**: 建议使用 TypeScript 的严格模式
-**改后**: `tsconfig.json` 中 `strict` 必须为 `true`。运行 `npx tsc --noEmit` 验证。
+**Before**: Handle errors following project conventions
+**After**: All error handling uses the `AppError` class exported from `src/lib/errors.ts`. Do not use native `throw new Error()`. Example: `throw new AppError('NOT_FOUND', 'User not found')`
 
 ---
 
-## 原则 3：一行一事实
+## Principle 2: Imperative voice, no suggestions
 
-不要在一个句子里塞多条指令。每行只传达一个信息。这让 agent 更容易解析，也更容易定位和更新单条规则。
+Every sentence must be an executable command. Do not use vague words like "suggest", "consider", "try to", or "should."
 
-**改前**: 运行测试前确保数据库已迁移，并且环境变量文件已复制，然后用 pytest 跑全套测试。
-**改后**:
+**Forbidden words**:
+- suggest / recommend
+- consider
+- try to
+- usually / generally
+- you can / you may
+- should (use "MUST" or direct imperative instead)
+
+**Before**: It is recommended to enable TypeScript strict mode
+**After**: `tsconfig.json` MUST have `strict` set to `true`. Run `npx tsc --noEmit` to verify.
+
+---
+
+## Principle 3: One fact per line
+
+Do not pack multiple instructions into a single sentence. Each line conveys one piece of information. This makes it easier for agents to parse, and easier to locate and update individual rules.
+
+**Before**: Before running tests, make sure the database is migrated and the env file is copied, then run the full test suite with pytest.
+**After**:
 ```
-1. 复制环境变量: `cp .env.example .env`
-2. 运行数据库迁移: `make db-migrate`
-3. 运行全部测试: `pytest`
+1. Copy environment variables: `cp .env.example .env`
+2. Run database migration: `make db-migrate`
+3. Run all tests: `pytest`
 ```
 
 ---
 
-## 原则 4：精确的命令格式
+## Principle 4: Exact command format
 
-每个命令都要给出完整的、可以直接复制粘贴执行的格式。包含工作目录、必要的环境变量、预期输出。
+Every command must be given in a complete, copy-paste-ready format. Include the working directory, required environment variables, and expected output.
 
-**改前**: 用 Docker 启动服务
-**改后**:
+**Before**: Start the service with Docker
+**After**:
 ```
-# 工作目录: 项目根目录
+# Working directory: project root
 docker compose up -d
 
-# 验证启动成功（预期输出: 3 个 running 容器）:
+# Verify successful startup (expected: 3 running containers):
 docker compose ps
 ```
 
 ---
 
-## 原则 5：错误消息即修复指南
+## Principle 5: Error messages are fix guides
 
-当你编写 linter 规则、CI 检查、或文档中的 "不要做 X" 类规则时，必须同时说明「应该做什么」和「怎么做」。
+When writing linter rules, CI checks, or "don't do X" rules in documentation, always state what to do instead and how to do it.
 
-**改前**: 禁止跨层导入。
-**改后**: 禁止跨层导入。依赖方向: Types → Config → Repo → Service → Runtime → UI。如果你需要在 UI 层使用 Service 层的数据，在 Runtime 层创建一个 bridge 函数。示例: 查看 `src/runtime/bridges/user-bridge.ts`。
-
----
-
-## 原则 6：JSON 追踪状态，Markdown 写叙述
-
-可变状态（功能列表、任务进度、配置开关）使用 JSON 格式。Agent 处理 JSON 时更不容易意外修改其他字段。
-
-**用 JSON 的场景**: feature tracker, 任务状态, 配置清单, API endpoint 注册表
-**用 Markdown 的场景**: 架构说明, 决策记录, 概念解释, 指令集
+**Before**: Cross-layer imports are forbidden.
+**After**: Cross-layer imports are forbidden. Dependency direction: Types → Config → Repo → Service → Runtime → UI. If you need Service-layer data in the UI layer, create a bridge function in the Runtime layer. Example: see `src/runtime/bridges/user-bridge.ts`.
 
 ---
 
-## 原则 7：新鲜度标记
+## Principle 6: JSON for state, Markdown for prose
 
-每个文档文件顶部包含:
+Use JSON for mutable state (feature lists, task progress, config switches). Agents are less likely to accidentally modify other fields when working with JSON.
+
+**Use JSON for**: feature tracker, task status, config checklists, API endpoint registries
+**Use Markdown for**: architecture docs, decision records, concept explanations, instruction sets
+
+---
+
+## Principle 7: Freshness markers
+
+Include at the top of every documentation file:
 
 ```markdown
 <!-- last_verified: 2025-01-15 -->
 <!-- related_paths: src/api/, src/models/ -->
 ```
 
-`last_verified` 是最后一次确认内容准确的日期。`related_paths` 是这份文档描述的代码路径——当这些路径发生重大变化时，文档可能需要更新。
+`last_verified` is the date the content was last confirmed accurate. `related_paths` lists code paths described by this document — when these paths undergo significant changes, the document may need updating.
 
 ---
 
-## 格式规范速查
+## Format reference
 
-| 元素 | 格式 |
+| Element | Format |
 |---|---|
-| 文件路径 | 反引号包裹: \`src/api/routes.ts\` |
-| 命令 | 代码块 + 注释说明工作目录 |
-| 环境变量 | 大写 + 反引号: \`DATABASE_URL\` |
-| 规则 | 编号列表，每条一行 |
-| 状态/追踪 | JSON 文件 |
-| 选项/决策 | 表格（选项 + 优劣 + 结论） |
+| File paths | Wrapped in backticks: \`src/api/routes.ts\` |
+| Commands | Code block + comment noting working directory |
+| Environment variables | Uppercase + backticks: \`DATABASE_URL\` |
+| Rules | Numbered list, one rule per line |
+| State/tracking | JSON file |
+| Options/decisions | Table (option + pros/cons + conclusion) |
 
 ---
 
-## 自检清单
+## Self-check checklist
 
-写完文档后用这个清单检查:
+Use this checklist after writing documentation:
 
-1. 有没有任何假设读者知道的背景知识？→ 补充
-2. 有没有 "建议"、"考虑" 类词汇？→ 改成祈使句
-3. 有没有一行包含多条指令？→ 拆开
-4. 每个命令是否可以直接复制执行？→ 补全路径和参数
-5. 有没有 "不要做X" 但没说 "应该做Y"？→ 补充替代方案
-6. 可变状态是否用了 JSON？→ 转换格式
-7. 文件顶部有没有 `last_verified`？→ 添加
+1. Does any part assume the reader has background knowledge? → Fill in the context
+2. Are there any "suggest", "consider" type words? → Rewrite as imperatives
+3. Does any line contain multiple instructions? → Split them
+4. Can every command be directly copy-pasted and executed? → Add missing paths and arguments
+5. Is there any "don't do X" without saying "do Y instead"? → Add the alternative
+6. Is mutable state using JSON? → Convert the format
+7. Does the file have `last_verified` at the top? → Add it

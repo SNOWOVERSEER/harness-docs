@@ -13,7 +13,7 @@ A skill for building and maintaining documentation systems optimized for AI agen
 
 Most project documentation is written for humans who already have context. Agents don't have that luxury — they only know what's in their context window. A 500-line AGENTS.md full of outdated rules is worse than no AGENTS.md at all: it wastes tokens, sends agents down wrong paths, and nobody maintains it because it's too big to review.
 
-This skill implements the core insight from OpenAI's Codex team: **the agent instruction file should be a directory, not an encyclopedia**. A concise index (under ~200 lines) that points to deeper, structured documentation in `docs/`, with JSON for anything that needs to be tracked as state.
+This skill implements the core insight from OpenAI's Codex team: **the agent instruction file should be a directory, not an encyclopedia**. A concise index (~100 lines, hard ceiling 200) that points to deeper, structured documentation in `docs/`, with JSON for anything that needs to be tracked as state.
 
 ### Agent instruction file naming
 
@@ -27,6 +27,44 @@ Different tools use different file names for the same concept. This skill suppor
 | GitHub Copilot | `.github/copilot-instructions.md` |
 
 **Auto-detection**: At the start of any mode, check which file already exists in the project root. Use that name throughout. If none exists, ask the user which tool they primarily use, or default to `CLAUDE.md` for Claude Code users and `AGENTS.md` otherwise. In the rest of this skill, "AGENTS.md" refers to whichever file name is in use for the project.
+
+**Claude Code progressive disclosure**: When the detected tool is Claude Code, three mechanisms map to the three-layer architecture:
+
+| Layer | Mechanism | Loading behavior |
+|---|---|---|
+| Layer 1 (always in context) | `@docs/file.md` in CLAUDE.md | **Eager** — expanded at session start, consumes tokens every session |
+| Layer 2 (conditionally loaded) | `.claude/rules/rule.md` with `paths` frontmatter | **Conditional** — loaded only when Claude opens files matching the path pattern |
+| Layer 2 (on-demand) | Plain text pointer: `→ docs/file.md` | **Manual** — agent reads the file only when the task requires it |
+| Layer 3 (deep reference) | Links from Layer 2 docs | **Manual** — agent follows links when it needs specific details |
+
+**`@` import rules**:
+- `@` files are eagerly loaded — use only for docs needed in 80%+ of sessions
+- Never `@`-import all docs/ files — 5 files × 200 lines = 1000+ lines consumed every session
+- Relative paths resolve from the file containing the import; recursive up to 5 levels; `@~/` for home directory
+- First-time imports show an approval dialog to the user
+
+**`.claude/rules/` for path-scoped rules** (the true lazy loading mechanism):
+```yaml
+# .claude/rules/api-conventions.md
+---
+paths: ["src/api/**/*.ts"]
+---
+All API endpoints MUST use the `/api/v1/` prefix...
+```
+This rule loads only when Claude works with files matching `src/api/**/*.ts`. Use this for domain-specific conventions that don't belong in every session.
+
+Example — a CLAUDE.md that uses all three layers correctly:
+```markdown
+# MyProject
+@docs/conventions.md          # Layer 1: always needed — eagerly loaded
+
+## Architecture
+→ `docs/architecture.md` — read when creating/modifying modules
+## Troubleshooting
+→ `docs/troubleshooting.md` — read when encountering errors
+
+# Path-scoped rules live in .claude/rules/ (loaded conditionally)
+```
 
 ## How to determine which mode to use
 
@@ -66,16 +104,20 @@ The key principle: **solve the immediate problem first, then offer to prevent re
 
 **Goal**: Analyze every documentation file in the codebase, identify concrete problems, restructure where needed, and produce measurable improvement — not just add headers.
 
+**Brownfield note**: For existing projects with significant legacy documentation, read `references/harness-concepts.md` § "Brownfield Project Adaptation" before starting. Don't try to achieve full compliance on day one — focus on the feedback loop (each agent mistake → one new rule) and adopt incrementally by domain.
+
 ### Step 1: Scan all docs
 
 Detect the agent instruction file (see "Agent instruction file naming" above), then build a complete inventory:
 
 1. Read the agent instruction file (`CLAUDE.md` / `AGENTS.md` / etc.) at repo root
 2. List everything in `docs/` directory (if it exists)
-3. Find ALL `*.md` files in the repo: `find . -name "*.md" -not -path "./.git/*"`
-4. Find state-tracking files: `find . -name "*.json" -path "*/docs/*"`, and any `todo.*`, `progress.*`, `tracker.*`, `status.*` files
+3. Find ALL `*.md` files in the repo using Glob: `**/*.md` (prefer Glob tool over shell `find`)
+4. Find state-tracking files: Glob `docs/**/*.json`, and any `todo.*`, `progress.*`, `tracker.*`, `status.*` files
 5. Check for other agent config files (`.cursor/rules`, `.github/copilot-instructions.md`, etc.)
-6. Check for memory files (`.claude/memory.md`, etc.)
+6. Check for agent memory/config files in `.claude/` directory (e.g., memory files, settings)
+
+**Large project triage**: If more than 15 documentation files are found, prioritize: (1) agent instruction file, (2) files in `docs/`, (3) files referenced from AGENTS.md, (4) remaining files by size (largest first). Analyze the first 15 in detail; summarize remaining files by issue type only.
 
 Record every file found with its line count (`wc -l`). This inventory is the basis for all analysis — do not skip files.
 
@@ -83,7 +125,7 @@ Also read `references/principles.md` from this skill for the scoring rubric.
 
 ### Step 2: Analyze each file individually
 
-For EVERY documentation file found (not just the agent instruction file), answer these questions:
+For every documentation file found (prioritized per the triage rule above), answer these questions:
 
 #### 2a. Content analysis
 
@@ -145,27 +187,27 @@ Score AFTER the per-file analysis, so the scores reflect real findings — not i
 
 Evaluate against 8 dimensions (each scored 0-3):
 
-| Dimension | What 3 looks like |
-|---|---|
-| **Conciseness** | AGENTS.md ≤ 200 lines, no redundancy across all docs |
-| **Directory structure** | AGENTS.md points to organized `docs/` with clear topics |
-| **Progressive disclosure** | Information layered: index → topic docs → deep references |
-| **Machine readability** | JSON for mutable state, structured formats, no ambiguity |
-| **Actionability** | Every instruction is executable, not advisory |
-| **Freshness signals** | Dates, version markers, no stale content detected |
-| **Feedback loop** | Evidence that docs get updated when agents fail |
-| **Observability** | Agent has documented access to logs, metrics, or traces |
+| Dimension | Principle | What 3 looks like |
+|---|---|---|
+| **Conciseness & structure** | P1 | AGENTS.md ~100 lines, points to organized `docs/` with clear topics, no redundancy |
+| **Progressive disclosure** | P2 | Information layered: index → topic docs → deep references |
+| **Machine readability** | P3 | JSON for mutable state, structured formats, no ambiguity |
+| **Actionability** | P4 | Every instruction is executable, not advisory |
+| **Freshness signals** | P5 | Dates, version markers, no stale content detected |
+| **Feedback loop** | P6 | Evidence that docs get updated when agents fail |
+| **Architecture constraints** | P7 | Dependency direction documented, mechanically enforced, error messages include fixes |
+| **Observability** | P8 | Agent has documented access to logs, metrics, or traces |
 
 ```json
 {
   "scores": {
-    "conciseness": { "score": 0, "reason": "" },
-    "directory_structure": { "score": 0, "reason": "" },
+    "conciseness_and_structure": { "score": 0, "reason": "" },
     "progressive_disclosure": { "score": 0, "reason": "" },
     "machine_readability": { "score": 0, "reason": "" },
     "actionability": { "score": 0, "reason": "" },
     "freshness": { "score": 0, "reason": "" },
     "feedback_loop": { "score": 0, "reason": "" },
+    "architecture_constraints": { "score": 0, "reason": "" },
     "observability": { "score": 0, "reason": "" }
   },
   "total": 0,
@@ -173,7 +215,9 @@ Evaluate against 8 dimensions (each scored 0-3):
 }
 ```
 
-**Minimum action threshold**: If total score < 18, merely adding freshness headers is NOT sufficient remediation. You must address at least the top 3 issues from the file analysis.
+**Scoring adjustments**: For projects with no runtime component (static sites, CLI tools, libraries), mark **Observability** as N/A and compute the total out of 21 instead of 24. Similarly, if a project has no multi-module architecture, **Architecture constraints** may be N/A.
+
+**Minimum action threshold**: If total score < 75% of the applicable maximum, merely adding freshness headers is NOT sufficient remediation. You must address at least the top 3 issues from the file analysis.
 
 ### Step 4: Remediate (with no-regression rule)
 
@@ -234,12 +278,16 @@ After remediation, check what's still missing against the standard structure (se
 Run all mechanical checks:
 1. `wc -l` on AGENTS.md — must be ≤ 200
 2. Pointer integrity — every file in the documentation map exists on disk
-3. Advisory language scan — zero forbidden words in AGENTS.md
+3. Advisory language scan — zero forbidden words in AGENTS.md and all `docs/` files
 4. No orphan docs — every file in `docs/` is reachable from AGENTS.md
 5. No Markdown state files — any `todo.md`, `progress.md`, `tracker.md` should have been converted to JSON
 6. Freshness markers — every doc file has a `last_verified` comment
 
 Present a before/after summary showing the score change and what was actually done to each file.
+
+### Step 7: Recommend doc-gardening (optional)
+
+For projects with active agent usage, suggest setting up automated doc-gardening (see `references/harness-concepts.md` § "Doc-Gardening"). A scheduled agent can periodically scan for stale `last_verified` dates, broken pointers, and advisory language — turning documentation maintenance from a manual chore into an automated system. This is the mechanical enforcement of Principle 6 (Feedback Loop).
 
 ---
 
@@ -260,7 +308,7 @@ If the user has given you access to the codebase, scan it first to pre-fill answ
 
 ### Step 2: Generate AGENTS.md
 
-Read `assets/agents-md-template.md` and fill it in. Keep the result under 200 lines — this is the hard ceiling. Aim for 80-150 lines for most projects. If you find yourself going over 200, move content to `docs/`.
+Read `assets/agents-md-template.md` and fill it in. Target ~100 lines (matching OpenAI's practice), hard ceiling 200. If you find yourself going over 200, move content to `docs/`.
 
 Core sections (in order):
 1. **Project overview** (2-3 lines)
@@ -272,16 +320,20 @@ Core sections (in order):
 
 ### Step 3: Generate docs/ directory
 
-Read `assets/docs-structure-template.md` for the standard structure. Generate these files:
+Read `assets/docs-structure-template.md` for the standard structure. Only generate files relevant to the project — not every project needs every file:
 
 - `docs/architecture.md` — Dependency layers, module boundaries, data flow
 - `docs/conventions.md` — Naming, file organization, code style rules
 - `docs/commands.md` — Every tool/script available, with exact invocation syntax
-- `docs/decisions.md` — Key architectural decisions and their rationale (ADR format)
-- `docs/troubleshooting.md` — Known failure modes and their fixes (the "linter error = fix guide" principle)
-- `docs/observability.md` — How agents can access and query logs, metrics, and traces to verify their own work (see `assets/observability-template.md`)
+- `docs/decisions.md` — Key architectural decisions and their rationale (ADR format). Skip for solo projects or early-stage projects with no meaningful ADR history.
+- `docs/troubleshooting.md` — Known failure modes and their fixes (the "linter error = fix guide" principle). Skip if the project has no known failure modes yet.
+- `docs/observability.md` — How agents can access and query logs, metrics, and traces to verify their own work (see `assets/observability-template.md`). Skip for static sites, CLIs, or projects with no runtime logs/metrics.
 
 Each file should follow the writing guide in `references/writing-guide.md`.
+
+For mature projects, also read `references/harness-concepts.md` and consider generating:
+- `docs/plans/` — Directory for execution plans as first-class artifacts (see template in `references/harness-concepts.md`). Plans give agents explicit verification targets.
+- `docs/quality-grades.json` — Quality grades for product domains (see template in `references/harness-concepts.md`). Skip for small projects.
 
 ### Step 4: Generate feature tracker (if applicable)
 
@@ -328,6 +380,8 @@ Determine where the fix belongs:
 | Convention violation | `docs/conventions.md` | "Agent used camelCase for file names" |
 | Repeated common mistake | `AGENTS.md` (common mistakes section) | "Agent keeps forgetting to run migrations" |
 | New failure mode | `docs/troubleshooting.md` | "Build fails silently when X" |
+| Tool not agent-accessible | `docs/commands.md` | "Agent didn't know how to query the database" |
+| Quality regression | `docs/quality-grades.json` | "Agent shipped code below domain quality standard" |
 
 ### Step 3: Write the prevention entry
 
@@ -345,24 +399,13 @@ Insert the rule in the correct file, at the correct location. Then run the same 
 
 ---
 
-## Writing principles (summary)
-
-These are summarized from `references/writing-guide.md` — read the full version for details.
-
-1. **Zero-context assumption**: Write as if the reader knows nothing about the project
-2. **Imperative voice**: "Run `make build`" not "You can build by running make"
-3. **One fact per line**: No compound sentences mixing different instructions
-4. **Executable over advisory**: Every statement should be something an agent can act on
-5. **Error messages are documentation**: When writing linter rules or checks, the error message itself should contain the fix
-6. **JSON for state, Markdown for prose**: Never track mutable state (feature lists, progress, status) in Markdown
-
----
-
 ## Important reminders
 
 - Read `references/writing-guide.md` before writing any documentation content
 - Read `references/principles.md` when auditing to ensure consistent scoring
 - Read `references/progressive-disclosure.md` when deciding how to structure information layers
-- Always verify AGENTS.md stays under 200 lines after any modification (run `wc -l` to check)
+- Read `references/harness-concepts.md` for mature projects needing plans, quality grades, doc-gardening, or brownfield adaptation
+- Always verify AGENTS.md stays under 200 lines after any modification (target ~100, run `wc -l` to check)
 - When in doubt about where content belongs, put it in `docs/`, not in AGENTS.md
 - **Detect mode is always on**: Even when the user's request isn't about documentation, stay alert for signals that documentation needs updating. The best feedback loops are the ones the user doesn't have to think about triggering
+- **Harness engineering is iterative**: The best documentation systems are built from real agent failures, not from templates. Start small, encode failures, and compound over time

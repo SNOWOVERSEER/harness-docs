@@ -1,6 +1,6 @@
-# AGENTS.md 标准模板
+# AGENTS.md Standard Template
 
-以下是一个可直接填写的 AGENTS.md 模板。目标: 控制在 100 行以内。
+Below is a ready-to-fill AGENTS.md template. Target: ~100 lines (matching OpenAI's practice of keeping the instruction file as a "table of contents, not an encyclopedia"). Hard ceiling: 200 lines.
 
 ---
 
@@ -9,7 +9,7 @@
 
 # [Project Name]
 
-[一句话描述项目做什么]
+[One sentence describing what the project does]
 
 ## Quick Commands
 
@@ -73,10 +73,11 @@ When to read: encountering errors, build failures, unexpected behavior
 
 ---
 
-## 使用说明
+## Usage notes
 
-1. 用实际内容替换所有 `[placeholder]`
-2. Common Mistakes 保留出现频率最高的 5-10 条
-3. 如果某个 docs/ 文件不存在，从 Documentation Map 中删除该行
-4. 填写完成后运行 `wc -l AGENTS.md` 验证——目标 80-150 行，硬上限 200 行
-5. 如果超过 200 行，把最不常用的内容移到对应的 docs/ 文件中
+1. Replace all `[placeholder]` entries with actual content
+2. Keep Common Mistakes to the top 5-10 most frequent entries
+3. If a docs/ file does not exist, remove that row from the Documentation Map
+4. After filling in, run `wc -l AGENTS.md` to verify — target ~100 lines, hard ceiling 200 lines
+5. If over 200 lines, move the least frequently needed content to the corresponding docs/ file
+6. For Claude Code: consider using `@docs/conventions.md` for files needed in 80%+ of sessions; use plain text pointers (`→ docs/file.md`) for on-demand files

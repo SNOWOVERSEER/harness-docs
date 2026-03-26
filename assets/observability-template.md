@@ -1,108 +1,108 @@
-# docs/observability.md 标准模板
+# docs/observability.md Standard Template
 
-为 agent 提供运行时自我验证能力。核心原则来自 Harrison Chase：**"在传统软件中，代码记录了应用做什么；在 AI 中，traces 记录了应用做什么。"** Agent 如果无法查询 logs/metrics/traces，就是在盲飞。
+Provides agents with runtime self-verification capabilities. Core principle from Harrison Chase: **"In traditional software, code documents what the app does; in AI, traces document what the app does."** If an agent cannot query logs/metrics/traces, it is flying blind.
 
 ---
 
-```markdown
+````markdown
 <!-- last_verified: YYYY-MM-DD -->
-<!-- related_paths: [日志配置路径, 监控配置路径] -->
+<!-- related_paths: [log config path, monitoring config path] -->
 
 # Observability
 
-Agent 可以通过以下方式查询运行时数据来验证自己的改动。
+Agents can query runtime data using the following methods to verify their own changes.
 
 ## Logs
 
 ```bash
-# 查看应用日志（最近 100 行）
+# View application logs (last 100 lines)
 [exact log command, e.g., "docker compose logs --tail 100 app"]
 
-# 搜索特定错误
+# Search for specific errors
 [exact grep/query command, e.g., "docker compose logs app 2>&1 | grep ERROR"]
 
-# 查看特定时间段的日志
+# View logs for a specific time range
 [exact command with time filter]
 ```
 
-日志格式: [JSON / plaintext / structured]
-日志位置: `[path or service]`
+Log format: [JSON / plaintext / structured]
+Log location: `[path or service]`
 
 ## Metrics
 
 ```bash
-# 检查服务健康状态
+# Check service health
 [exact command, e.g., "curl -s http://localhost:3000/health | jq ."]
 
-# 查看响应时间
+# Check response time
 [exact command, e.g., "curl -w '%{time_total}' -s http://localhost:3000/api/ping"]
 
-# 查看数据库连接池状态
+# Check database connection pool status
 [exact command if applicable]
 ```
 
-关键指标及阈值:
+Key metrics and thresholds:
 
-| 指标 | 正常范围 | 告警阈值 | 查询命令 |
+| Metric | Normal range | Alert threshold | Query command |
 |---|---|---|---|
-| 服务启动时间 | < 3s | > 5s | `[command]` |
-| API 响应时间 (p95) | < 200ms | > 500ms | `[command]` |
-| 数据库查询时间 | < 50ms | > 200ms | `[command]` |
-| 内存使用 | < 512MB | > 1GB | `[command]` |
+| Service startup time | < 3s | > 5s | `[command]` |
+| API response time (p95) | < 200ms | > 500ms | `[command]` |
+| Database query time | < 50ms | > 200ms | `[command]` |
+| Memory usage | < 512MB | > 1GB | `[command]` |
 
 ## Traces (if applicable)
 
 ```bash
-# 查询最近的 traces
+# Query recent traces
 [exact command, e.g., query DSL, Jaeger API, etc.]
 
-# 查看特定请求的 trace
+# View trace for a specific request
 [command with trace ID placeholder]
 
-# 查看慢请求
+# Find slow requests
 [command to find traces exceeding threshold]
 ```
 
-Trace 查询接口: [API endpoint / CLI tool / query DSL]
-Trace 存储: [Jaeger / Zipkin / OpenTelemetry Collector / etc.]
+Trace query interface: [API endpoint / CLI tool / query DSL]
+Trace storage: [Jaeger / Zipkin / OpenTelemetry Collector / etc.]
 
-## 自我验证清单
+## Self-verification checklist
 
-Agent 在完成以下类型的任务后，应使用上述命令验证：
+After completing the following task types, agents should verify using the commands above:
 
-| 任务类型 | 验证方法 |
+| Task type | Verification method |
 |---|---|
-| 修改 API endpoint | 查 logs 确认无 error + 查 metrics 确认响应时间正常 |
-| 修改数据库相关代码 | 查 logs 确认查询正常 + 查 metrics 确认连接池无溢出 |
-| 修改性能相关代码 | 查 metrics 确认关键指标未退化 |
-| 修改启动流程 | 查 logs 确认启动无异常 + 查 metrics 确认启动时间在阈值内 |
-| 部署变更 | 查 health endpoint + 查 logs 前 30 秒无 error |
+| Modify API endpoint | Check logs for no errors + check metrics for normal response time |
+| Modify database-related code | Check logs for normal queries + check metrics for no connection pool overflow |
+| Modify performance-related code | Check metrics to confirm key indicators have not regressed |
+| Modify startup flow | Check logs for no startup anomalies + check metrics for startup time within threshold |
+| Deploy changes | Check health endpoint + check logs for no errors in first 30 seconds |
 
-## 无可观测性基础设施时的替代方案
+## Fallback when no observability infrastructure exists
 
-如果项目还没有正式的 log/metrics/trace 系统，agent 仍然可以用以下方式自我验证：
+If the project does not yet have a formal log/metrics/trace system, agents can still self-verify using these methods:
 
 ```bash
-# 运行测试并检查输出
+# Run tests and check output
 [test command] 2>&1 | tail -20
 
-# 启动服务并检查是否成功
+# Start service and check if successful
 [run command] & sleep 3 && curl -s http://localhost:[port]/health
 
-# 检查构建产物大小（防止意外膨胀）
+# Check build artifact size (prevent unexpected bloat)
 du -sh [build output dir]
 
-# 检查 TypeScript 类型（零成本验证）
+# Check TypeScript types (zero-cost verification)
 npx tsc --noEmit 2>&1 | tail -5
 ```
-```
+````
 
 ---
 
-## 使用说明
+## Usage notes
 
-1. 用项目实际的命令替换所有 `[placeholder]`
-2. 如果项目没有某个层次（如没有 traces），删除该部分并在顶部注明
-3. 关键指标表格中的阈值应与团队的 SLA/SLO 对齐
-4. "无可观测性基础设施时的替代方案" 部分适用于小型项目或本地开发环境，确保即使没有正式监控也能做基本验证
-5. 自我验证清单是给 agent 的操作指南——每种任务类型完成后应跑对应的检查
+1. Replace all `[placeholder]` entries with actual project commands
+2. If the project lacks a specific layer (e.g., no traces), delete that section and note it at the top
+3. Thresholds in the key metrics table should align with the team's SLA/SLO
+4. The "Fallback when no observability infrastructure exists" section is for small projects or local dev environments, ensuring basic verification even without formal monitoring
+5. The self-verification checklist is an operational guide for agents — run the corresponding checks after completing each task type

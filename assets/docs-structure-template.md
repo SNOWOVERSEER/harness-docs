@@ -1,34 +1,34 @@
-# docs/ 目录标准结构
+# docs/ Directory Standard Structure
 
-## 标准文件清单
-
-```
-docs/
-├── architecture.md        — 模块边界、依赖方向、数据流
-├── conventions.md         — 命名规范、文件组织、代码风格
-├── commands.md            — 所有可用工具/脚本的精确调用语法
-├── decisions.md           — 架构决策记录 (ADR format)
-├── troubleshooting.md     — 已知失败模式及修复步骤
-├── observability.md       — Agent 可用的日志/指标/链路查询方式及自我验证清单
-└── feature-tracker.json   — 功能追踪 (JSON, 非 Markdown)
-```
-
-## 可选扩展文件（大型项目按需添加）
+## Standard files
 
 ```
 docs/
-├── api-reference.md       — API endpoint 清单及请求/响应格式
-├── deployment.md          — 部署流程及环境配置
-├── testing-guide.md       — 测试策略、fixture 说明、mock 规范
-├── migration-guide.md     — 数据库/API 版本迁移步骤
-└── references/            — 深层参考资料目录
+├── architecture.md        — Module boundaries, dependency direction, data flow
+├── conventions.md         — Naming conventions, file organization, code style
+├── commands.md            — Exact invocation syntax for all available tools/scripts
+├── decisions.md           — Architecture Decision Records (ADR format)
+├── troubleshooting.md     — Known failure modes and fix steps
+├── observability.md       — Log/metric/trace query methods and self-verification checklists
+└── feature-tracker.json   — Feature tracking (JSON, not Markdown)
+```
+
+## Optional extensions (add as needed for larger projects)
+
+```
+docs/
+├── api-reference.md       — API endpoint list with request/response formats
+├── deployment.md          — Deployment process and environment configuration
+├── testing-guide.md       — Testing strategy, fixture docs, mock conventions
+├── migration-guide.md     — Database/API version migration steps
+└── references/            — Deep reference materials directory
     ├── schema-definitions.md
     └── third-party-apis.md
 ```
 
 ---
 
-## 每个文件的结构模板
+## Structure template for each file
 
 ### architecture.md
 
@@ -40,25 +40,25 @@ docs/
 
 ## Module Map
 
-[列出所有顶层模块及其职责，每个模块 1-2 行]
+[List all top-level modules and their responsibilities, 1-2 lines each]
 
 ## Dependency Direction
 
-[声明依赖流向规则，例:]
+[Declare dependency flow rules, e.g.:]
 Types → Config → Repo → Service → Runtime → UI
 
-禁止反向导入。违规检测: `[lint command]`
+Reverse imports are forbidden. Violation detection: `[lint command]`
 
 ## Data Flow
 
-[描述数据如何从输入到输出流经各模块]
+[Describe how data flows through modules from input to output]
 
 ## Module Boundaries
 
 | Module | Responsibility | Allowed imports | Forbidden imports |
 |---|---|---|---|
-| types/ | 类型定义 | (none) | everything else |
-| service/ | 业务逻辑 | types, config, repo | runtime, ui |
+| types/ | Type definitions | (none) | everything else |
+| service/ | Business logic | types, config, repo | runtime, ui |
 ```
 
 ### conventions.md
@@ -70,19 +70,19 @@ Types → Config → Repo → Service → Runtime → UI
 # Conventions
 
 ## File Naming
-[精确规则 + 示例]
+[Exact rules + examples]
 
 ## Function/Variable Naming
-[精确规则 + 示例]
+[Exact rules + examples]
 
 ## File Organization
-[目录结构规则]
+[Directory structure rules]
 
 ## Import Order
-[import 排序规则 + 自动格式化命令]
+[Import ordering rules + auto-format command]
 
 ## Error Handling
-[统一错误处理模式 + 示例代码]
+[Unified error handling pattern + example code]
 ```
 
 ### commands.md
@@ -92,7 +92,7 @@ Types → Config → Repo → Service → Runtime → UI
 
 # Commands
 
-每个命令包含: 精确调用语法、工作目录、预期输出、常见失败原因。
+Each command includes: exact invocation syntax, working directory, expected output, common failure causes.
 
 ## Build
 \`\`\`bash
@@ -126,10 +126,10 @@ Types → Config → Repo → Service → Runtime → UI
 ## ADR-001: [Decision Title]
 - **Date**: YYYY-MM-DD
 - **Status**: accepted | superseded | deprecated
-- **Context**: [为什么需要做这个决策，1-2句]
-- **Decision**: [做了什么决策]
-- **Consequences**: [这个决策带来的影响]
-- **Alternatives considered**: [考虑过的其他方案及为什么不选]
+- **Context**: [Why this decision was needed, 1-2 sentences]
+- **Decision**: [What was decided]
+- **Consequences**: [Impact of this decision]
+- **Alternatives considered**: [Other options and why they were rejected]
 ```
 
 ### troubleshooting.md
@@ -139,7 +139,7 @@ Types → Config → Repo → Service → Runtime → UI
 
 # Troubleshooting
 
-每条包含: 症状、原因、修复步骤。格式遵循「错误消息即修复指南」原则。
+Each entry includes: symptom, cause, fix steps. Format follows the "error message = fix guide" principle.
 
 ## [Error symptom or message]
 **Cause**: [root cause]

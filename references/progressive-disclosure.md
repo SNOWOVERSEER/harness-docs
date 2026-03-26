@@ -1,105 +1,105 @@
-# 渐进式披露（Progressive Disclosure）
+# Progressive Disclosure
 
-Agent 的上下文窗口是最宝贵的资源。把所有信息一次性塞进去等于没有重点。渐进式披露的核心思想：按需加载，逐层深入。
+An agent's context window is its most valuable resource. Dumping all information at once is the same as having no focus. The core idea of progressive disclosure: load on demand, go deeper layer by layer.
 
 ---
 
-## 三层架构
+## Three-layer architecture
 
-### 第一层：AGENTS.md（永远在上下文中）
+### Layer 1: AGENTS.md (always in context)
 
-**预算**: ≤ 200 行（目标 80-150 行，200 是硬上限）
-**内容**: 项目身份、关键命令、架构概览指针、top 5-10 常见错误、文档地图
-**类比**: 书的目录页 + 速查卡
+**Budget**: ~100 lines (matching OpenAI's practice, hard ceiling 200 lines)
+**Content**: Project identity, key commands, architecture overview pointer, top 5-10 common mistakes, documentation map
+**Analogy**: A book's table of contents + quick reference card
 
-Agent 每次启动都会读这个文件。每一行都应该是高频使用的信息。纯背景知识和低频规则放到 docs/ 里。
+The agent reads this file at every startup. Every line must be high-frequency information. Pure background knowledge and low-frequency rules go in docs/.
 
-**判断标准**: 如果一条规则不是 "大部分任务都需要知道" 的，它不属于 AGENTS.md。
+**Decision criterion**: If a rule is not "something most tasks need to know," it does not belong in AGENTS.md.
 
-### 第二层：docs/ 主题文档（按需读取）
+### Layer 2: docs/ topic documents (loaded on demand)
 
-**预算**: 每个文件 100-300 行
-**内容**: 某个主题的完整规则集（架构、规范、命令、故障排除）
-**类比**: 书的章节
+**Budget**: 100-300 lines per file
+**Content**: Complete rule set for a given topic (architecture, conventions, commands, troubleshooting)
+**Analogy**: Book chapters
 
-Agent 在执行特定类型的任务时读取相关文件。AGENTS.md 中的指针告诉它什么时候该读哪个文件。
+The agent reads the relevant file when executing a specific type of task. Pointers in AGENTS.md tell it when to read which file.
 
-**指针格式**:
+**Pointer format**:
 ```markdown
 ## Architecture
-→ `docs/architecture.md` — 模块边界、依赖方向、数据流
-  读取时机: 创建新模块、修改跨模块调用、添加新依赖时
+→ `docs/architecture.md` — Module boundaries, dependency direction, data flow
+  When to read: creating new modules, modifying cross-module calls, adding dependencies
 ```
 
-### 第三层：深度参考（仅在具体场景加载）
+### Layer 3: Deep references (loaded only in specific scenarios)
 
-**预算**: 无限
-**内容**: API 文档、schema 定义、历史决策记录、大型配置示例
-**类比**: 附录和参考文献
+**Budget**: Unlimited
+**Content**: API docs, schema definitions, historical decision records, large config examples
+**Analogy**: Appendices and bibliography
 
-从第二层文档中链接过来。Agent 只有在需要具体细节时才加载。
+Linked from Layer 2 documents. The agent loads these only when it needs specific details.
 
 ---
 
-## 如何决定信息放哪一层
+## How to decide which layer information belongs in
 
 ```
-问: 这条信息在 80% 以上的任务中都需要？
-  是 → 第一层 (AGENTS.md)
-  否 ↓
+Q: Is this information needed in 80%+ of tasks?
+  Yes → Layer 1 (AGENTS.md)
+  No ↓
 
-问: 这条信息在某类任务中经常需要？
-  是 → 第二层 (docs/topic.md)
-  否 ↓
+Q: Is this information frequently needed for a certain type of task?
+  Yes → Layer 2 (docs/topic.md)
+  No ↓
 
-→ 第三层 (docs/references/ 或具体的参考文件)
+→ Layer 3 (docs/references/ or specific reference files)
 ```
 
 ---
 
-## 指针的写法
+## How to write pointers
 
-好的指针不只是一个文件路径，它还告诉 agent **什么时候**该去读那个文件。
+A good pointer is not just a file path — it also tells the agent **when** to read that file.
 
-**坏指针**:
+**Bad pointer**:
 ```
-详见 docs/architecture.md
+See docs/architecture.md for details
 ```
 
-**好指针**:
+**Good pointer**:
 ```
 ## Architecture
 → `docs/architecture.md`
-当你需要: 创建新模块、修改跨模块调用、添加新依赖
-包含: 模块边界图、依赖方向规则、数据流说明
+When you need to: create new modules, modify cross-module calls, add dependencies
+Contains: module boundary diagram, dependency direction rules, data flow description
 ```
 
 ---
 
-## 文档地图模板
+## Documentation map template
 
-AGENTS.md 末尾应有一个完整的文档地图:
+AGENTS.md should end with a complete documentation map:
 
 ```markdown
 ## Documentation Map
 
 | File | When to read | Contains |
 |---|---|---|
-| `docs/architecture.md` | 创建/修改模块结构时 | 依赖方向、模块边界、数据流 |
-| `docs/conventions.md` | 写新代码时 | 命名规范、文件组织、代码风格 |
-| `docs/commands.md` | 需要运行构建/测试/部署时 | 所有可用命令及其精确语法 |
-| `docs/decisions.md` | 需要理解为什么这样设计时 | 架构决策记录 (ADRs) |
-| `docs/troubleshooting.md` | 遇到错误或构建失败时 | 已知问题及修复步骤 |
-| `docs/observability.md` | 需要验证改动是否生效时 | 日志/指标/链路查询命令及自我验证清单 |
-| `docs/feature-tracker.json` | 检查功能状态/进度时 | 功能列表及当前状态 (JSON) |
+| `docs/architecture.md` | Creating/modifying module structure | Dependency direction, module boundaries, data flow |
+| `docs/conventions.md` | Writing new code | Naming conventions, file organization, code style |
+| `docs/commands.md` | Running build/test/deploy commands | All available commands with exact syntax |
+| `docs/decisions.md` | Understanding design rationale | Architecture Decision Records (ADRs) |
+| `docs/troubleshooting.md` | Encountering errors or build failures | Known issues and fix steps |
+| `docs/observability.md` | Verifying changes work in production | Log/metric/trace query commands and self-verification checklists |
+| `docs/feature-tracker.json` | Checking feature status/progress | Feature list and current state (JSON) |
 ```
 
 ---
 
-## 反模式
+## Anti-patterns
 
-1. **AGENTS.md 里塞了所有 API endpoint 的说明** → 移到 `docs/api-reference.md`
-2. **docs/ 里只有一个巨大的 README.md** → 按主题拆分
-3. **指针没有说明读取时机** → 添加 "When to read" 说明
-4. **深层文档没有从浅层链接过来** → agent 永远找不到它
-5. **AGENTS.md 有条件逻辑（if/else）** → 简化，条件分支移到对应的主题文档
+1. **All API endpoint docs crammed into AGENTS.md** → Move to `docs/api-reference.md`
+2. **Only one giant README.md in docs/** → Split by topic
+3. **Pointers without read-timing guidance** → Add "When to read" descriptions
+4. **Deep documents not linked from shallow layers** → Agent will never find them
+5. **AGENTS.md contains conditional logic (if/else)** → Simplify; move conditional branches to the relevant topic doc
