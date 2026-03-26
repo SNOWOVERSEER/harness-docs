@@ -64,34 +64,97 @@ The key principle: **solve the immediate problem first, then offer to prevent re
 
 ## Mode A: Audit
 
-**Goal**: Scan the entire codebase's documentation, score it against Harness principles, and produce a concrete remediation plan with ready-to-apply changes.
+**Goal**: Analyze every documentation file in the codebase, identify concrete problems, restructure where needed, and produce measurable improvement — not just add headers.
 
-### Step 1: Scan
+### Step 1: Scan all docs
 
-Detect the agent instruction file (see "Agent instruction file naming" above), then read these (in order, skip if not found):
-- The agent instruction file (`CLAUDE.md` / `AGENTS.md` / etc.) at repo root
-- `docs/` directory listing
-- Any other `*.md` files in the repo root
-- Any additional agent config files (`.cursor/rules`, `.github/copilot-instructions.md`, etc.)
+Detect the agent instruction file (see "Agent instruction file naming" above), then build a complete inventory:
+
+1. Read the agent instruction file (`CLAUDE.md` / `AGENTS.md` / etc.) at repo root
+2. List everything in `docs/` directory (if it exists)
+3. Find ALL `*.md` files in the repo: `find . -name "*.md" -not -path "./.git/*"`
+4. Find state-tracking files: `find . -name "*.json" -path "*/docs/*"`, and any `todo.*`, `progress.*`, `tracker.*`, `status.*` files
+5. Check for other agent config files (`.cursor/rules`, `.github/copilot-instructions.md`, etc.)
+6. Check for memory files (`.claude/memory.md`, etc.)
+
+Record every file found with its line count (`wc -l`). This inventory is the basis for all analysis — do not skip files.
 
 Also read `references/principles.md` from this skill for the scoring rubric.
 
-### Step 2: Score
+### Step 2: Analyze each file individually
 
-Evaluate against these 8 dimensions (each scored 0-3):
+For EVERY documentation file found (not just the agent instruction file), answer these questions:
+
+#### 2a. Content analysis
+
+| Question | Action if YES |
+|---|---|
+| Is this file > 300 lines? | Must split — identify which sections can be extracted to `docs/` |
+| Does it duplicate content from another file? | Mark for consolidation — keep one source of truth |
+| Does it contain mutable state in Markdown? (task lists, status tracking, progress, feature lists with checkboxes) | Mark for JSON conversion — agents corrupt Markdown state |
+| Does it contain stale information? (outdated versions, deprecated APIs, wrong commands) | Mark for update or deletion |
+| Does it contain advisory language? (consider, try to, you can, should, 建议, 考虑, 尽量) | Mark for rewrite to imperative |
+| Is it unreachable? (no pointer from AGENTS.md or any other doc) | Mark — needs pointer or deletion |
+| Does it mix concerns? (architecture + conventions + commands in one file) | Mark for topic-based split |
+
+#### 2b. Structure analysis
+
+| Question | Action if YES |
+|---|---|
+| Are headers inconsistent or missing? | Standardize to match templates in `assets/` |
+| Are code examples missing for commands/tools? | Add exact invocation syntax |
+| Are error scenarios undocumented? | Add Symptom → Cause → Fix entries |
+| Is the file missing a freshness marker? | Add `<!-- last_verified: DATE -->` |
+
+Output a per-file findings table:
+
+```json
+{
+  "file_analysis": [
+    {
+      "path": "CLAUDE.md",
+      "lines": 340,
+      "issues": [
+        {"type": "oversized", "detail": "340 lines, limit is 200", "action": "split"},
+        {"type": "advisory_language", "detail": "12 instances of 'consider', 'should'", "action": "rewrite"},
+        {"type": "mixed_concerns", "detail": "architecture + conventions + commands in one file", "action": "split_by_topic"}
+      ]
+    },
+    {
+      "path": "todo.md",
+      "lines": 45,
+      "issues": [
+        {"type": "mutable_state_in_markdown", "detail": "Task list with checkboxes, status tracking", "action": "convert_to_json"}
+      ]
+    },
+    {
+      "path": "docs/setup.md",
+      "lines": 80,
+      "issues": [
+        {"type": "stale", "detail": "References Node 16, project uses Node 20", "action": "update"},
+        {"type": "unreachable", "detail": "No pointer from CLAUDE.md", "action": "add_pointer"}
+      ]
+    }
+  ]
+}
+```
+
+### Step 3: Score (after analysis, not before)
+
+Score AFTER the per-file analysis, so the scores reflect real findings — not impressions.
+
+Evaluate against 8 dimensions (each scored 0-3):
 
 | Dimension | What 3 looks like |
 |---|---|
-| **Conciseness** | AGENTS.md ≤ 200 lines, no redundancy |
+| **Conciseness** | AGENTS.md ≤ 200 lines, no redundancy across all docs |
 | **Directory structure** | AGENTS.md points to organized `docs/` with clear topics |
 | **Progressive disclosure** | Information layered: index → topic docs → deep references |
-| **Machine readability** | Structured formats (JSON for state, clear headers, no ambiguity) |
-| **Actionability** | Every instruction is executable, not advisory ("run X" not "consider X") |
-| **Freshness signals** | Dates, version markers, or mechanisms to detect staleness |
+| **Machine readability** | JSON for mutable state, structured formats, no ambiguity |
+| **Actionability** | Every instruction is executable, not advisory |
+| **Freshness signals** | Dates, version markers, no stale content detected |
 | **Feedback loop** | Evidence that docs get updated when agents fail |
-| **Observability** | Agent has documented access to logs, metrics, or traces for self-verification |
-
-Total: 0-24. Output the score as a JSON block for consistency:
+| **Observability** | Agent has documented access to logs, metrics, or traces |
 
 ```json
 {
@@ -110,21 +173,73 @@ Total: 0-24. Output the score as a JSON block for consistency:
 }
 ```
 
-Then provide a prioritized remediation plan.
+**Minimum action threshold**: If total score < 18, merely adding freshness headers is NOT sufficient remediation. You must address at least the top 3 issues from the file analysis.
 
-### Step 3: Remediate
+### Step 4: Remediate (with no-regression rule)
 
-For each issue found, produce one of:
-- **Rewrite**: Full replacement text for the file, with diff markers
-- **Split**: Instructions to extract sections from a bloated file into `docs/`
-- **Create**: New file content for missing documentation
-- **Delete**: Files or sections that are outdated/harmful
+For each issue from Step 2, apply the appropriate action:
 
-Present as a structured execution plan the user can approve before applying. Then apply all approved changes in one pass.
+| Action | When to use | How to execute |
+|---|---|---|
+| **Split** | File > 300 lines OR mixes 3+ unrelated topics | Extract by topic into `docs/`. Add pointer in AGENTS.md with "When to read" guidance. Verify: every fact in the original must exist in exactly one place after split. |
+| **Consolidate** | Same information in 2+ files | Keep the version in the most logical location, delete duplicates, add pointer if needed. |
+| **Convert to JSON** | Mutable state in Markdown (todo lists, feature trackers, progress, status boards) | Create `.json` with structured schema. Migrate all entries. Delete the `.md` version. |
+| **Rewrite** | Advisory language, vague instructions, missing examples | Replace with imperative, specific, executable text per `references/writing-guide.md`. |
+| **Update** | Stale content (wrong versions, deprecated APIs, outdated commands) | Verify current state by reading code/configs, then fix. |
+| **Connect** | Orphan file with no incoming pointer | Add to AGENTS.md documentation map with one-line description and "When to read" context. |
+| **Delete** | Fully obsolete, or duplicate after consolidation | Remove the file. Remove any pointers to it. |
+| **Create** | Gap identified — standard doc type missing entirely | Generate from templates in `assets/`. |
 
-### Step 4: Generate missing pieces
+**Cleanup rule**: When a remediation action replaces a file (Split, Convert to JSON, Consolidate), follow this exact sequence:
 
-After fixing existing docs, check what's still missing against the standard structure (see `assets/docs-structure-template.md`). Offer to generate any missing files.
+1. **Create** the new file(s) with all migrated content
+2. **Verify** no information was lost (compare old vs new)
+3. **Update all pointers** — every reference to the old file in AGENTS.md, docs/, and other files must point to the new file(s). Do this NOW, before any deletion
+4. **List files to delete** — present the user with a clear summary:
+   - Which files will be deleted and why
+   - What replaced them (new file path)
+   - Confirmation that all references have been updated (quote the updated pointers)
+5. **Wait for user confirmation** — do NOT delete until the user explicitly approves (e.g., "删除", "delete", "go ahead", "确认")
+6. **Delete** only after approval — run `rm` on the approved files
+
+Example output to user:
+
+> **Ready to clean up replaced files:**
+>
+> | File to delete | Replaced by | Reason |
+> |---|---|---|
+> | `todo.md` | `todo.json` | Mutable state converted to JSON |
+> | `docs/guide.md` | `docs/architecture.md` + `docs/conventions.md` | Split by topic |
+>
+> All references have been updated:
+> - AGENTS.md line 42: `docs/guide.md` → `docs/architecture.md` and `docs/conventions.md`
+> - AGENTS.md line 58: `todo.md` → `todo.json`
+>
+> Confirm deletion? (These files are fully superseded and safe to remove.)
+
+**No-regression rule**: After every Split or Consolidate action, verify:
+1. No information was lost (every fact from the original exists in the result)
+2. No pointer is broken (every referenced file exists)
+3. No stale file remains (the original is deleted, not left alongside the replacement)
+4. Discoverability is not reduced (agent can still find the information with the same or fewer hops)
+
+If a split would make information harder to find (e.g., splitting a short, well-organized file just to hit a template), do NOT split. The goal is better agent performance, not structural purity.
+
+### Step 5: Generate missing pieces
+
+After remediation, check what's still missing against the standard structure (see `assets/docs-structure-template.md`). Only generate files that would actually help the agent — skip templates that don't apply to the project (e.g., don't create `docs/observability.md` for a static site with no logs).
+
+### Step 6: Final verification
+
+Run all mechanical checks:
+1. `wc -l` on AGENTS.md — must be ≤ 200
+2. Pointer integrity — every file in the documentation map exists on disk
+3. Advisory language scan — zero forbidden words in AGENTS.md
+4. No orphan docs — every file in `docs/` is reachable from AGENTS.md
+5. No Markdown state files — any `todo.md`, `progress.md`, `tracker.md` should have been converted to JSON
+6. Freshness markers — every doc file has a `last_verified` comment
+
+Present a before/after summary showing the score change and what was actually done to each file.
 
 ---
 
